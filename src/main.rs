@@ -5,9 +5,10 @@ fn main() {
     println!("Hello, world!");
 
     App::new()
-        .add_plugins(MinimalPlugins)
+        .add_plugins(DefaultPlugins)
         .add_systems(Startup, debug_world)
-        .add_systems(Update, debug_console)
+        .add_systems(Startup, debug_ui)
+        .add_systems(Update, update_debug_ui)
         .run();
 }
 
@@ -18,40 +19,147 @@ pub struct Name(String);
 pub struct Item;
 
 #[derive(Component)]
-pub struct Friend;
+pub struct Character;
 
-fn debug_console( 
-    mut commands: Commands,
-    friend_query: Query<&Name, With<Friend>>,
-    item_query: Query<&Name, With<Item>>,
-) {
-    println!("-----");
-    println!("Debugging");
+#[derive(Component)]
+pub struct CharacterList;
 
-    let mut input = String::new();
+#[derive(Component)]
+pub struct ItemList;
 
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
+fn debug_ui(mut commands: Commands, asset_server: Res<AssetServer>) {
+    //display
+    commands.spawn(Camera2d::default());
+    commands.spawn(Node {
+        width: Val::Percent(100.),
+        height: Val::Percent(100.0),
+        ..default()
+    })
+    .with_children(|parent| {
 
-    let command = input.trim();
+        //character list
+        parent
+            .spawn((Node {
+                width: Val::Px(200.),
+                border: UiRect::all(Val::Px(2.)),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.25, 0.25, 0.25)),
+        ))
+        .with_children(|parent| {
 
-    match command {
-        "items" => {
-            for name in &item_query {
-                println!("{}", name.0);
-            }
-        },
-        "friends" => {
-            for name in &friend_query {
-                println!("{}", name.0);
-            }
-        },
-        _ => println!("Invalid command"),
-    }
+            parent.spawn((
+                Text::new("Character List"),
+                TextFont {
+                    font_size: 25.0,
+                    ..default()
+                },
+                Label,
+            ));
+
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    ..default()
+                },
+                CharacterList,
+            ));
+
+        });
+
+        //item list
+        parent
+            .spawn((Node {
+                width: Val::Px(200.),
+                border: UiRect::all(Val::Px(2.)),
+                flex_direction: FlexDirection::Column,
+                ..default()
+            },
+            BackgroundColor(Color::srgb(0.25, 0.25, 0.25)),
+        ))
+        .with_children(|parent| {
+            
+            parent.spawn((
+                Text::new("Item List"),
+                TextFont {
+                    font_size: 25.0,
+                    ..default()
+                },
+                Label,
+            ));
+
+            parent.spawn((
+                Node {
+                    flex_direction: FlexDirection::Column,
+                    ..default()
+                },
+                ItemList,
+            ));
+
+        });
+
+    });
 }
 
-fn debug_world(mut commands: Commands) {
+fn update_debug_ui(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    
+    mut character_list_query: Query<Entity, With<CharacterList>>,
+    mut item_list_query: Query<Entity, With<ItemList>>,
+    character_query: Query<&Name, Added<Character>>,
+    item_query: Query<&Name, Added<Item>>,
+) {
+    let characters = character_query.iter();
+    let items = item_query.iter();
+
+    if let Ok(character_list) = character_list_query.get_single() {
+        for character in characters {
+            commands.entity(character_list).with_children(|parent| {
+    
+                parent.spawn((
+                    Text::new(format!("{}", character.0)),
+                    TextFont {
+                        font_size: 20.0,
+                        ..default()
+                    },
+                    Label,
+                ));
+    
+            });
+        }
+    };
+    if let Ok(item_list) = item_list_query.get_single() {
+        for item in items {
+            commands.entity(item_list).with_children(|parent| {
+    
+                parent.spawn((
+                    Text::new(format!("{}", item.0)),
+                    TextFont {
+                        font_size: 20.0,
+                        ..default()
+                    },
+                    Label,
+                ));
+    
+            });
+        }
+    };
+
+}
+
+fn debug_world(mut commands: Commands, asset_server: Res<AssetServer>) {
+    
+
+    //spawn items
     commands.spawn(( Name("Spoon".to_string()), Item ));
-    commands.spawn(( Name("Toby".to_string()), Friend ));
+
+    //spawn characters
+    commands.spawn(( Name("Toby".to_string()), Character ));
+    commands.spawn(( Name("Swann".to_string()), Character ));
+    commands.spawn(( Name("Dan".to_string()), Character ));
+    commands.spawn(( Name("Tamara".to_string()), Character ));
+    commands.spawn(( Name("Niamh".to_string()), Character ));
+    commands.spawn(( Name("Erin".to_string()), Character ));
 }
